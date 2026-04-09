@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
 import { useParams } from 'next/navigation'
 import { useState, useCallback, useRef } from 'react'
 import {
   FileText, Globe, Type, Upload, Trash2, Plus, File,
-  HelpCircle, Loader2, CheckCircle2, AlertCircle, X, GripVertical
+  HelpCircle, Loader2, CheckCircle2, AlertCircle, X, GripVertical,
+  Search, Link2, RefreshCw, CheckSquare, Square
 } from 'lucide-react'
 import useSWR from 'swr'
 
@@ -24,6 +25,11 @@ interface DataSource {
 }
 
 type QAPair = { question: string; answer: string }
+
+interface DiscoveredLink {
+  url: string
+  title: string
+}
 
 const TABS = [
   { id: 'text', label: 'Text', icon: Type },
@@ -49,7 +55,7 @@ export default function SourcesPage() {
 
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg })
-    setTimeout(() => setToast(null), 3500)
+    setTimeout(() => setToast(null), 4000)
   }
 
   const totalChars = sources?.reduce((s, src) => s + (src.char_count || 0), 0) ?? 0
@@ -171,37 +177,94 @@ function TextSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
   )
 }
 
+// ─── FILE SOURCE FORM ────────────────────────────────────────────────────────
+
 function FileSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
   const [loading, setLoading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [processingFiles, setProcessingFiles] = useState<{ name: string; status: 'parsing' | 'saving' | 'done' | 'error' }[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return
     setLoading(true)
     const supabase = createClient()
-    for (const file of Array.from(files)) {
+    const fileArray = Array.from(files)
+
+    setProcessingFiles(fileArray.map(f => ({ name: f.name, status: 'parsing' })))
+
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i]
+      const isPdf = file.name.endsWith('.pdf')
+      const isDocx = file.name.endsWith('.docx')
+
       try {
-        const text = await file.text()
-        await supabase.from('data_sources').insert({
-          chatbot_id: chatbotId, type: 'file', name: file.name,
-          content: text, char_count: text.length,
-          metadata: { size: file.size, type: file.type },
+        setProcessingFiles(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'parsing' } : p))
+
+        let text = ''
+        if (isPdf || isDocx) {
+          // Server-side parsing for PDF and DOCX
+          const formData = new FormData()
+          formData.append('file', file)
+          const res = await fetch('/api/parse/file', { method: 'POST', body: formData })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error ?? 'Parse failed')
+          text = data.text
+        } else {
+          // Client-side for plaintext files
+          text = await file.text()
+        }
+
+        setProcessingFiles(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'saving' } : p))
+
+        const { error } = await supabase.from('data_sources').insert({
+          chatbot_id: chatbotId,
+          type: 'file',
+          name: file.name,
+          content: text,
+          char_count: text.length,
+          metadata: { size: file.size, mimeType: file.type },
         })
-      } catch { showToast('error', `Failed: ${file.name}`) }
+
+        if (error) throw error
+
+        setProcessingFiles(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'done' } : p))
+      } catch (err) {
+        setProcessingFiles(prev => prev.map((p, idx) => idx === i ? { ...p, status: 'error' } : p))
+        showToast('error', `Failed: ${file.name}`)
+      }
     }
-    showToast('success', `${files.length} file(s) uploaded`)
+
+    const doneCount = fileArray.length
+    showToast('success', `${doneCount} file(s) processed`)
     setLoading(false)
     onSuccess()
+    setTimeout(() => setProcessingFiles([]), 2000)
     if (fileRef.current) fileRef.current.value = ''
   }, [chatbotId, onSuccess, showToast])
+
+  const statusIcon = (status: string) => {
+    if (status === 'parsing' || status === 'saving') return <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+    if (status === 'done') return <CheckCircle2 className="w-4 h-4 text-green-500" />
+    return <AlertCircle className="w-4 h-4 text-destructive" />
+  }
+
+  const statusLabel = (status: string) => {
+    if (status === 'parsing') return 'Parsing...'
+    if (status === 'saving') return 'Saving...'
+    if (status === 'done') return 'Done'
+    return 'Error'
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <div>
         <h3 className="text-sm font-semibold text-foreground">Upload Files</h3>
-        <p className="text-xs text-muted-foreground mt-1">Upload .txt, .md, .csv, or .json files.</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Upload <span className="font-mono font-medium">.txt .md .csv .json .pdf .docx</span> files for training.
+        </p>
       </div>
+
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
@@ -214,60 +277,285 @@ function FileSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
         <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
           {loading ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /> : <Upload className="w-5 h-5 text-muted-foreground" />}
         </div>
-        <p className="text-sm font-medium text-foreground">{loading ? 'Processing...' : 'Drop files here or click to browse'}</p>
-        <p className="text-xs text-muted-foreground">.txt, .md, .csv, .json supported</p>
+        <p className="text-sm font-medium text-foreground">{loading ? 'Processing files...' : 'Drop files here or click to browse'}</p>
+        <p className="text-xs text-muted-foreground">.txt, .md, .csv, .json, .pdf, .docx supported</p>
       </div>
-      <input ref={fileRef} type="file" className="hidden" multiple accept=".txt,.md,.csv,.json" onChange={(e) => handleFiles(e.target.files)} />
+
+      <input
+        ref={fileRef}
+        type="file"
+        className="hidden"
+        multiple
+        accept=".txt,.md,.csv,.json,.pdf,.docx"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+
+      {/* Per-file progress */}
+      {processingFiles.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/10 p-3">
+          {processingFiles.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              {statusIcon(f.status)}
+              <span className="flex-1 truncate text-foreground">{f.name}</span>
+              <span className="text-xs text-muted-foreground shrink-0">{statusLabel(f.status)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
+// ─── WEBSITE SOURCE FORM ─────────────────────────────────────────────────────
+
 function WebsiteSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
   const [url, setUrl] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [discovering, setDiscovering] = useState(false)
+  const [discoveredLinks, setDiscoveredLinks] = useState<DiscoveredLink[]>([])
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set())
+  const [linkFilter, setLinkFilter] = useState('')
+  const [scraping, setScraping] = useState(false)
+  const [scrapeProgress, setScrapeProgress] = useState({ done: 0, total: 0 })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleDiscover = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!url.trim()) return
-    setLoading(true)
+    setDiscovering(true)
+    setDiscoveredLinks([])
+    setSelectedUrls(new Set())
+
     try {
-      const res = await fetch('/api/scrape', {
+      const res = await fetch('/api/scrape/discover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url.trim(), chatbotId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed')
-      showToast('success', `Crawled "${data.title}" (${data.charCount} chars)`)
-      setUrl('')
-      onSuccess()
+      if (!res.ok) throw new Error(data.error ?? 'Discovery failed')
+      setDiscoveredLinks(data.links ?? [])
+      // Auto-select the root URL
+      if (data.links?.length > 0) {
+        setSelectedUrls(new Set([data.links[0].url]))
+      }
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Crawl failed')
+      showToast('error', err instanceof Error ? err.message : 'Discovery failed')
     }
-    setLoading(false)
+
+    setDiscovering(false)
   }
 
+  const toggleSelect = (linkUrl: string) => {
+    setSelectedUrls(prev => {
+      const next = new Set(prev)
+      if (next.has(linkUrl)) next.delete(linkUrl)
+      else next.add(linkUrl)
+      return next
+    })
+  }
+
+  const filteredLinks = discoveredLinks.filter(l =>
+    l.url.toLowerCase().includes(linkFilter.toLowerCase()) ||
+    l.title.toLowerCase().includes(linkFilter.toLowerCase())
+  )
+
+  const allSelected = filteredLinks.length > 0 && filteredLinks.every(l => selectedUrls.has(l.url))
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedUrls(prev => {
+        const next = new Set(prev)
+        filteredLinks.forEach(l => next.delete(l.url))
+        return next
+      })
+    } else {
+      setSelectedUrls(prev => {
+        const next = new Set(prev)
+        filteredLinks.forEach(l => next.add(l.url))
+        return next
+      })
+    }
+  }
+
+  const handleScrapeSelected = async () => {
+    if (selectedUrls.size === 0) return
+    const urlsToScrape = Array.from(selectedUrls)
+    setScraping(true)
+    setScrapeProgress({ done: 0, total: urlsToScrape.length })
+
+    // Scrape in batches of 3 to avoid overloading the server
+    const BATCH_SIZE = 3
+    let done = 0
+
+    for (let i = 0; i < urlsToScrape.length; i += BATCH_SIZE) {
+      const batch = urlsToScrape.slice(i, i + BATCH_SIZE)
+      try {
+        const res = await fetch('/api/scrape', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls: batch, chatbotId }),
+        })
+        const data = await res.json()
+        done += data.successCount ?? batch.length
+        setScrapeProgress({ done, total: urlsToScrape.length })
+      } catch {
+        done += batch.length
+        setScrapeProgress({ done, total: urlsToScrape.length })
+      }
+    }
+
+    showToast('success', `Trained on ${done} of ${urlsToScrape.length} page(s)`)
+    setScraping(false)
+    onSuccess()
+  }
+
+  const progressPct = scrapeProgress.total > 0 ? Math.round((scrapeProgress.done / scrapeProgress.total) * 100) : 0
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div>
         <h3 className="text-sm font-semibold text-foreground">Crawl Website</h3>
-        <p className="text-xs text-muted-foreground mt-1">Enter a URL to extract text content from a webpage.</p>
-      </div>
-      <div className="flex gap-3">
-        <Input placeholder="https://example.com/about" value={url} onChange={(e) => setUrl(e.target.value)} className="flex-1 bg-background border-border" type="url" required />
-        <Button type="submit" disabled={!url.trim() || loading} className="bg-foreground text-background hover:bg-foreground/90 shrink-0">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Globe className="w-4 h-4 mr-2" />}
-          {loading ? 'Crawling...' : 'Fetch Page'}
-        </Button>
-      </div>
-      <div className="rounded-lg bg-muted/20 border border-border p-4">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          The crawler extracts text from the provided URL. For best results, link directly to content pages. JS-rendered content may not be captured.
+        <p className="text-xs text-muted-foreground mt-1">
+          Enter a URL to discover all links on the site. Then choose which pages to train your chatbot on.
         </p>
       </div>
-    </form>
+
+      {/* URL input + Discover button */}
+      <form onSubmit={handleDiscover} className="flex gap-3">
+        <Input
+          placeholder="https://example.com"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          className="flex-1 bg-background border-border"
+          type="url"
+          required
+        />
+        <Button type="submit" disabled={!url.trim() || discovering} className="bg-foreground text-background hover:bg-foreground/90 shrink-0">
+          {discovering ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
+          {discovering ? 'Discovering...' : 'Discover Links'}
+        </Button>
+      </form>
+
+      {/* Link Discovery Results */}
+      {discoveredLinks.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {/* Header row */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Link2 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground">
+                {discoveredLinks.length} link{discoveredLinks.length !== 1 ? 's' : ''} found
+              </span>
+              <span className="text-xs text-muted-foreground">
+                &middot; {selectedUrls.size} selected
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => { setDiscoveredLinks([]); setSelectedUrls(new Set()) }}
+              className="h-7 gap-1 text-xs"
+            >
+              <X className="w-3 h-3" /> Clear
+            </Button>
+          </div>
+
+          {/* Filter input */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Filter links..."
+              value={linkFilter}
+              onChange={e => setLinkFilter(e.target.value)}
+              className="pl-8 h-8 text-sm bg-background border-border"
+            />
+          </div>
+
+          {/* Select All toggle */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {allSelected
+                ? <CheckSquare className="w-4 h-4 text-foreground" />
+                : <Square className="w-4 h-4" />}
+              {allSelected ? 'Deselect All' : 'Select All'} ({filteredLinks.length})
+            </button>
+          </div>
+
+          {/* Scrollable links list */}
+          <div className="flex flex-col gap-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-background p-2 pr-1">
+            {filteredLinks.length === 0 ? (
+              <p className="text-xs text-muted-foreground p-3 text-center">No links match your filter.</p>
+            ) : filteredLinks.map((link) => {
+              const isSelected = selectedUrls.has(link.url)
+              return (
+                <button
+                  key={link.url}
+                  type="button"
+                  onClick={() => toggleSelect(link.url)}
+                  className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-left w-full transition-colors group ${
+                    isSelected ? 'bg-foreground/5 border border-foreground/10' : 'hover:bg-muted/40 border border-transparent'
+                  }`}
+                >
+                  <div className={`w-4 h-4 shrink-0 rounded border transition-colors flex items-center justify-center ${
+                    isSelected ? 'bg-foreground border-foreground' : 'border-border group-hover:border-foreground/40'
+                  }`}>
+                    {isSelected && <CheckCircle2 className="w-2.5 h-2.5 text-background" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">{link.title || link.url}</p>
+                    <p className="text-xs text-muted-foreground truncate font-mono">{link.url}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Scraping progress */}
+          {scraping && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Scraping pages...
+                </span>
+                <span className="font-mono">{scrapeProgress.done}/{scrapeProgress.total}</span>
+              </div>
+              <Progress value={progressPct} className="h-1.5" />
+            </div>
+          )}
+
+          {/* Train button */}
+          <Button
+            type="button"
+            onClick={handleScrapeSelected}
+            disabled={selectedUrls.size === 0 || scraping}
+            className="w-full bg-foreground text-background hover:bg-foreground/90"
+          >
+            {scraping
+              ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Training {scrapeProgress.done}/{scrapeProgress.total}...</>
+              : <><RefreshCw className="w-4 h-4 mr-2" />Train on {selectedUrls.size} Selected Page{selectedUrls.size !== 1 ? 's' : ''}</>
+            }
+          </Button>
+        </div>
+      )}
+
+      {/* Empty state hint */}
+      {discoveredLinks.length === 0 && !discovering && (
+        <div className="rounded-lg bg-muted/20 border border-border p-4">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">How it works:</strong> Enter a website URL and click "Discover Links". UniBot will scan the page and find all internal links. You can then select the specific pages you want to train your chatbot on.
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
+
+// ─── Q&A SOURCE FORM ─────────────────────────────────────────────────────────
 
 function QASourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
   const [pairs, setPairs] = useState<QAPair[]>([{ question: '', answer: '' }])
@@ -338,6 +626,8 @@ function QASourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
   )
 }
 
+// ─── SOURCE ITEM ─────────────────────────────────────────────────────────────
+
 function SourceItem({ source, onDelete }: { source: DataSource; onDelete: () => void }) {
   const [deleting, setDeleting] = useState(false)
   const handleDelete = async () => {
@@ -348,6 +638,7 @@ function SourceItem({ source, onDelete }: { source: DataSource; onDelete: () => 
   }
   const iconMap: Record<string, React.ElementType> = { text: Type, file: FileText, website: Globe, qa: HelpCircle }
   const Icon = iconMap[source.type] ?? FileText
+  const metaUrl = source.metadata?.url as string | undefined
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 group hover:border-foreground/20 transition-colors">
@@ -358,6 +649,7 @@ function SourceItem({ source, onDelete }: { source: DataSource; onDelete: () => 
         <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
         <p className="text-xs text-muted-foreground font-mono">
           {source.type} &middot; {(source.char_count || 0).toLocaleString()} chars
+          {metaUrl && <span className="ml-1 text-muted-foreground/60">&middot; {metaUrl}</span>}
         </p>
       </div>
       <Button
