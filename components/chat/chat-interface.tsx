@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 import { cn } from '@/lib/utils'
-import { MessageSquare, Send, RotateCcw, User } from 'lucide-react'
+import { MessageSquare, Send, RotateCcw, User, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ChatMarkdown } from '@/components/chat/chat-markdown'
 
@@ -13,13 +14,16 @@ interface ChatInterfaceProps {
   welcomeMessage?: string
 }
 
+/** Safely extract text from any UIMessage structure (AI SDK v5 or v6) */
 function getMessageText(message: any): string {
-  if (typeof message.content === 'string' && message.content) return message.content
-  if (!message.parts || !Array.isArray(message.parts)) return ''
-  return message.parts
-    .filter((p: any) => p.type === 'text')
-    .map((p: any) => p.text)
-    .join('')
+  if (message.parts && Array.isArray(message.parts)) {
+    return message.parts
+      .filter((p: any) => p.type === 'text')
+      .map((p: any) => p.text as string)
+      .join('')
+  }
+  if (typeof message.content === 'string') return message.content
+  return ''
 }
 
 export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage }: ChatInterfaceProps) {
@@ -27,25 +31,31 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const { messages, append, status, setMessages } = useChat({
-    api: '/api/chat',
-    body: { chatbotId },
+  // AI SDK v6: useChat requires a transport object; `api` and `body` are no
+  // longer top-level options. Extra body fields go inside DefaultChatTransport.
+  const { messages, sendMessage, status, setMessages, error } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: { chatbotId },
+    }),
     onError: (err) => {
-      console.error('[ChatInterface] useChat onError:', err)
+      console.error('[ChatInterface] useChat error:', err)
     },
-    onFinish: (message) => {
-      console.log('[ChatInterface] useChat onFinish completed for message:', message.id)
+    onFinish: ({ messages: allMsgs }) => {
+      console.log('[ChatInterface] stream finished, total messages:', allMsgs.length)
     },
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
+  // Auto-scroll to bottom whenever messages update
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages, status])
 
+  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
@@ -53,29 +63,33 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
-    append({ role: 'user', content: input })
+    // AI SDK v6: sendMessage({ text }) — do NOT use append()
+    sendMessage({ text: input.trim() })
     setInput('')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit(e)
+      handleSubmit(e as any)
     }
   }
 
   const handleReset = () => {
     setMessages([])
+    setInput('')
     inputRef.current?.focus()
   }
 
   return (
     <div className={cn('flex flex-col h-full', isPlayground ? 'bg-background' : 'bg-card')}>
-      {/* Messages */}
+
+      {/* Messages area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className={cn('mx-auto flex flex-col gap-5 py-8', isPlayground ? 'max-w-3xl px-6' : 'px-4')}>
+
           {/* Empty state */}
-          {messages.length === 0 && (
+          {messages.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center py-16 gap-5 text-center">
               <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-foreground">
                 <MessageSquare className="w-7 h-7 text-background" />
@@ -90,6 +104,17 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
                     : 'Ask me anything and I\'ll do my best to help you.')}
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Error banner */}
+          {error && (
+            <div className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>Something went wrong: {error.message}. Please try again.</span>
+              <button onClick={handleReset} className="ml-auto text-xs underline underline-offset-2 shrink-0">
+                Reset
+              </button>
             </div>
           )}
 
@@ -135,23 +160,31 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
             )
           })}
 
-          {/* Typing indicator */}
-          {isLoading && messages.length > 0 && !getMessageText(messages[messages.length - 1]) && (
-            <div className="flex gap-3 justify-start animate-fade-in">
-              <div className="flex items-start shrink-0 mt-0.5">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-foreground">
-                  <MessageSquare className="w-4 h-4 text-background" />
+          {/* Typing indicator — shown when loading but no assistant text yet */}
+          {isLoading && (
+            (() => {
+              const lastMsg = messages[messages.length - 1]
+              const hasAssistantText = lastMsg && lastMsg.role === 'assistant' && getMessageText(lastMsg)
+              if (hasAssistantText) return null
+              return (
+                <div className="flex gap-3 justify-start animate-fade-in">
+                  <div className="flex items-start shrink-0 mt-0.5">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-foreground">
+                      <MessageSquare className="w-4 h-4 text-background" />
+                    </div>
+                  </div>
+                  <div className="bg-muted rounded-2xl rounded-bl-sm px-5 py-4">
+                    <div className="flex gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:150ms]" />
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:300ms]" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-muted rounded-2xl rounded-bl-sm px-5 py-4">
-                <div className="flex gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:150ms]" />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:300ms]" />
-                </div>
-              </div>
-            </div>
+              )
+            })()
           )}
+
         </div>
       </div>
 
@@ -165,7 +198,7 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
+                placeholder={isLoading ? 'Waiting for response...' : 'Type a message...'}
                 rows={1}
                 className={cn(
                   'w-full resize-none rounded-xl border border-input bg-background px-4 py-3.5 pr-12 text-sm',
@@ -184,6 +217,7 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
                   size="icon"
                   className="h-12 w-12 shrink-0 rounded-xl border-border hover:bg-muted"
                   onClick={handleReset}
+                  title="Reset chat"
                   aria-label="Reset chat"
                 >
                   <RotateCcw className="w-4 h-4" />
