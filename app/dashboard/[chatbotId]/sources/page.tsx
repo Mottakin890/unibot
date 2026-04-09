@@ -311,6 +311,7 @@ function FileSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
 function WebsiteSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
   const [url, setUrl] = useState('')
   const [discovering, setDiscovering] = useState(false)
+  const [discoveryStatus, setDiscoveryStatus] = useState('')
   const [discoveredLinks, setDiscoveredLinks] = useState<DiscoveredLink[]>([])
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set())
   const [linkFilter, setLinkFilter] = useState('')
@@ -323,6 +324,10 @@ function WebsiteSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
     setDiscovering(true)
     setDiscoveredLinks([])
     setSelectedUrls(new Set())
+    setDiscoveryStatus('Checking sitemap.xml...')
+
+    // Progressive status updates so the user knows it's working
+    const statusTimer = setTimeout(() => setDiscoveryStatus('Crawling pages recursively...'), 4000)
 
     try {
       const res = await fetch('/api/scrape/discover', {
@@ -330,14 +335,19 @@ function WebsiteSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url.trim(), chatbotId }),
       })
+      clearTimeout(statusTimer)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Discovery failed')
       setDiscoveredLinks(data.links ?? [])
+      setDiscoveryStatus('')
       // Auto-select the root URL
       if (data.links?.length > 0) {
         setSelectedUrls(new Set([data.links[0].url]))
       }
+      showToast('success', `Found ${data.links?.length ?? 0} pages on ${new URL(url.trim()).hostname}`)
     } catch (err) {
+      clearTimeout(statusTimer)
+      setDiscoveryStatus('')
       showToast('error', err instanceof Error ? err.message : 'Discovery failed')
     }
 
@@ -435,6 +445,15 @@ function WebsiteSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
         </Button>
       </form>
 
+      {/* Discovery progress status */}
+      {discovering && discoveryStatus && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+          <span>{discoveryStatus}</span>
+          <span className="text-muted-foreground/50">&mdash; This may take up to 30s for large sites</span>
+        </div>
+      )}
+
       {/* Link Discovery Results */}
       {discoveredLinks.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -477,7 +496,7 @@ function WebsiteSourceForm({ chatbotId, onSuccess, showToast }: FormProps) {
               type="button"
               onClick={toggleSelectAll}
               className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
+            >  
               {allSelected
                 ? <CheckSquare className="w-4 h-4 text-foreground" />
                 : <Square className="w-4 h-4" />}
