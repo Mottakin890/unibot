@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
 
+// Allow up to 60s for batch scraping multiple pages
+export const maxDuration = 60
+
 export async function POST(req: Request) {
   try {
     const { url, urls, chatbotId } = await req.json()

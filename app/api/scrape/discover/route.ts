@@ -1,6 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import * as cheerio from 'cheerio'
+
+// Allow up to 30s for fetching and parsing large websites
+export const maxDuration = 30
 
 export async function POST(req: Request) {
   try {
