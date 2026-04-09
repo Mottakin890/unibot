@@ -2,6 +2,7 @@ import {
   convertToModelMessages,
   streamText,
   UIMessage,
+} from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
 
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
-    onFinish: async ({ messages: allMessages, isAborted }) => {
+    onFinish: async ({ messages: allMessages, isAborted }: { messages: UIMessage[], isAborted: boolean }) => {
       if (isAborted) return
 
       try {
