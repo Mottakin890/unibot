@@ -205,7 +205,6 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
                   'placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:border-foreground/30',
                   'max-h-32 min-h-[48px] transition-all'
                 )}
-                disabled={isLoading}
               />
             </div>
 

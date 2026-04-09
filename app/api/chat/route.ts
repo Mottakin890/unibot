@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   }
 
   const systemPrompt = (chatbot.system_prompt ?? 'You are a helpful assistant.') + contextBlock
-  const modelId = chatbot.model || 'gemini-2.5-flash-preview-04-17'
+  const modelId = chatbot.model || 'gemini-1.5-flash'
 
   console.log(`[API /api/chat] Using model: ${modelId}, context size: ${contextBlock.length} chars`)
 
