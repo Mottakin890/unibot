@@ -17,11 +17,6 @@ import { useEffect, useState } from 'react'
 import { Save, Trash2 } from 'lucide-react'
 import useSWR from 'swr'
 
-const MODELS = [
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Fast)' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Powerful)' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-]
 
 export default function SettingsPage() {
   const { chatbotId } = useParams<{ chatbotId: string }>()
@@ -127,15 +122,11 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="model" className="text-sm font-medium text-foreground">AI Model</Label>
-          <Select value={model} onValueChange={setModel}>
-            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MODELS.map((m) => (
-                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label className="text-sm font-medium text-foreground">AI Model</Label>
+          <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 border border-border rounded-lg text-sm text-muted-foreground">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            Using VPS Local Model (Llama 3.2 3B) automatically.
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">

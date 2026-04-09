@@ -2,12 +2,13 @@ import {
   convertToModelMessages,
   streamText,
   UIMessage,
-} from 'ai'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 
-const google = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || '',
+// Forward local compatible API to the VPS Ollama server
+const localOllama = createOpenAI({
+  baseURL: 'http://107.172.127.198:11434/v1',
+  apiKey: 'ollama', // Not needed for local Ollama, but required by SDK
 })
 
 export const maxDuration = 60
@@ -74,7 +75,8 @@ export async function POST(req: Request) {
   }
 
   const systemPrompt = (chatbot.system_prompt ?? 'You are a helpful assistant.') + contextBlock
-  const modelId = chatbot.model || 'gemini-1.5-flash'
+  // Force local Ollama model
+  const modelId = 'llama3.2'
 
   console.log(`[API /api/chat] Using model: ${modelId}, context size: ${contextBlock.length} chars`)
 
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: google(modelId),
+    model: localOllama(modelId),
     system: systemPrompt,
     messages: modelMessages,
     temperature: chatbot.temperature ?? 0.7,
