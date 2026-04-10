@@ -17,7 +17,12 @@ export default function ConnectPage() {
   allow="clipboard-write"
 ></iframe>`
 
+  // Use HTML-escaped angle brackets so React never encounters a raw <script>
+  // element in the component tree (which triggers a React warning).
   const scriptCode = `<script src="${origin}/widget-loader.js?id=${chatbotId}" async></script>`
+  const scriptCodeDisplay = scriptCode
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
 
   const shareLink = `${origin}/widget/${chatbotId}`
 
@@ -105,9 +110,10 @@ export default function ConnectPage() {
             </ol>
           </div>
           <div className="relative">
-            <pre className="rounded-lg bg-secondary p-4 text-xs text-foreground font-mono overflow-x-auto whitespace-pre-wrap">
-              {scriptCode}
-            </pre>
+            <pre
+              className="rounded-lg bg-secondary p-4 text-xs text-foreground font-mono overflow-x-auto whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ __html: scriptCodeDisplay }}
+            />
             <Button
               variant="outline"
               size="sm"

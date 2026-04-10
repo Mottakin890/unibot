@@ -9,8 +9,8 @@ export const metadata = {
 
 export default function WidgetLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.className}>
-      <body className="bg-card m-0 p-0 overflow-hidden">{children}</body>
-    </html>
+    <div className={`bg-card m-0 p-0 overflow-hidden h-svh w-full ${inter.className}`}>
+      {children}
+    </div>
   )
 }

@@ -48,6 +48,7 @@ export async function POST(req: Request) {
       model: model || 'gemini-2.5-flash',
       system_prompt: system_prompt || 'You are a helpful assistant.',
       temperature: temperature ?? 0.7,
+      is_public: true, // allow anonymous widget access via RLS policy chatbots_select_public
     })
     .select()
     .single()
