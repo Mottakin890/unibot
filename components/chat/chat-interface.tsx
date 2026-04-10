@@ -100,7 +100,7 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
                 </h3>
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-xs font-medium text-green-600 dark:text-green-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  100% Local VPS Intelligence (Llama 3.2)
+                  Powered by Gemini &amp; GPT-4o
                 </div>
                 <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mt-2">
                   {welcomeMessage || (isPlayground

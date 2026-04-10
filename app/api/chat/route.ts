@@ -47,6 +47,20 @@ function scoreRelevance(query: string, sourceContent: string): number {
   return hits / words.length
 }
 
+export async function POST(req: Request) {
+  let body;
+  try {
+    body = await req.json();
+  } catch (err) {
+    return new Response('Invalid JSON', { status: 400 });
+  }
+
+  const { messages, chatbotId, conversationId } = body;
+
+  if (!chatbotId || !messages) {
+    return new Response('Missing chatbotId or messages', { status: 400 });
+  }
+
   console.log(
     `[/api/chat] Processing for chatbotId=${chatbotId}, messages=${messages.length}`
   )
