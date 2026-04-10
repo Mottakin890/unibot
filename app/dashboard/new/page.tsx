@@ -18,8 +18,10 @@ import { MessageSquare, ArrowLeft, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
 const MODELS = [
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Fast)' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Powerful)' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Recommended)' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Stable)' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Preview)' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Preview)' },
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Fast)' },
   { value: 'gpt-4o', label: 'GPT-4o (Powerful)' },
 ]
@@ -31,7 +33,7 @@ export default function NewChatbotPage() {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [model, setModel] = useState('gemini-2.5-flash')
+  const [model, setModel] = useState('gemini-2.0-flash')
   const [systemPrompt, setSystemPrompt] = useState(
     'You are a helpful AI assistant. Answer questions based on the provided context. If you don\'t know the answer, say so honestly.'
   )

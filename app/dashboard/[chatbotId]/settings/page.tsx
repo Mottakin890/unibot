@@ -18,8 +18,10 @@ import { Save, Trash2 } from 'lucide-react'
 import useSWR from 'swr'
 
 const MODELS = [
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Fast)' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Powerful)' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Recommended)' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Stable)' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Preview)' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Preview)' },
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Fast)' },
   { value: 'gpt-4o', label: 'GPT-4o (Powerful)' },
 ]
@@ -52,7 +54,7 @@ export default function SettingsPage() {
     if (chatbot) {
       setName(chatbot.name ?? '')
       setDescription(chatbot.description ?? '')
-      setModel(chatbot.model ?? 'gemini-2.5-flash')
+      setModel(chatbot.model ?? 'gemini-2.0-flash')
       setSystemPrompt(chatbot.system_prompt ?? '')
       setTemperature(chatbot.temperature ?? 0.7)
       setWelcomeMessage(chatbot.welcome_message ?? '')
