@@ -159,3 +159,25 @@
   background: var(--foreground);
   color: var(--background);
 }
+
+/* ── Landing page background animations ── */
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -20px) scale(1.05); }
+  66%       { transform: translate(-20px, 25px) scale(0.97); }
+}
+
+@keyframes particle-blink {
+  0%, 100% { opacity: 0.08; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(1.6); }
+}
+
+@keyframes grid-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 4rem 4rem; }
+}
+
+@keyframes shimmer-sweep {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}

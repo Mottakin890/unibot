@@ -96,15 +96,15 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
               </div>
               <div className="flex flex-col gap-2 items-center">
                 <h3 className="text-lg font-semibold text-foreground">
-                  {isPlayground ? 'Test your Private Bot' : 'How can I help?'}
+                  {isPlayground ? 'Test your Chatbot' : 'How can I help?'}
                 </h3>
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-xs font-medium text-green-600 dark:text-green-400">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  Powered by Gemini &amp; GPT-4o
+                  Online &amp; Ready
                 </div>
                 <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mt-2">
                   {welcomeMessage || (isPlayground
-                    ? 'Send a message to see how your chatbot responds directly from the edge node.'
+                    ? 'Send a message to see how your chatbot responds.'
                     : 'Ask me anything. Your data never leaves this server.')}
                 </p>
               </div>

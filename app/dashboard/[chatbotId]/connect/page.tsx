@@ -17,15 +17,7 @@ export default function ConnectPage() {
   allow="clipboard-write"
 ></iframe>`
 
-  const scriptCode = `<script>
-  (function() {
-    var d = document, s = d.createElement('script');
-    s.src = '${origin}/widget-loader.js';
-    s.setAttribute('data-chatbot-id', '${chatbotId}');
-    s.async = true;
-    d.body.appendChild(s);
-  })();
-</script>`
+  const scriptCode = `<script src="${origin}/widget-loader.js?id=${chatbotId}" async></script>`
 
   const shareLink = `${origin}/widget/${chatbotId}`
 

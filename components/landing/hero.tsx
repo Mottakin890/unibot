@@ -41,9 +41,57 @@ function TypingText({ texts, className }: { texts: string[]; className?: string 
 export function LandingHero() {
   return (
     <section className="relative overflow-hidden">
-      {/* Subtle grid bg */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30" />
+      {/* === Animated Background Layer === */}
+
+      {/* Animated grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20 [animation:grid-drift_20s_linear_infinite]" />
+
+      {/* Radial fade over grid */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,var(--background)_70%)]" />
+
+      {/* Floating orb — top left */}
+      <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-violet-500/10 blur-[100px] [animation:orb-float_8s_ease-in-out_infinite]" />
+
+      {/* Floating orb — bottom right */}
+      <div className="absolute -bottom-40 -right-20 w-[450px] h-[450px] rounded-full bg-blue-500/10 blur-[120px] [animation:orb-float_11s_ease-in-out_infinite_reverse]" />
+
+      {/* Floating orb — center */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-cyan-500/8 blur-[80px] [animation:orb-float_14s_ease-in-out_infinite_1s]" />
+
+      {/* Particle dots */}
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+        {[
+          { top: '12%', left: '8%',  size: 3,   delay: '0s',    dur: '6s'  },
+          { top: '25%', left: '85%', size: 2,   delay: '1s',    dur: '7s'  },
+          { top: '55%', left: '5%',  size: 2.5, delay: '2s',    dur: '5s'  },
+          { top: '70%', left: '78%', size: 3.5, delay: '0.5s',  dur: '9s'  },
+          { top: '40%', left: '92%', size: 2,   delay: '3s',    dur: '6.5s'},
+          { top: '85%', left: '20%', size: 3,   delay: '1.5s',  dur: '8s'  },
+          { top: '15%', left: '55%', size: 2,   delay: '4s',    dur: '7.5s'},
+          { top: '60%', left: '45%', size: 2.5, delay: '2.5s',  dur: '5.5s'},
+          { top: '30%', left: '30%', size: 2,   delay: '0.8s',  dur: '10s' },
+          { top: '90%', left: '65%', size: 3,   delay: '3.5s',  dur: '6s'  },
+        ].map((p, i) => (
+          <span
+            key={i}
+            className="absolute rounded-full bg-foreground/20"
+            style={{
+              top: p.top,
+              left: p.left,
+              width: p.size,
+              height: p.size,
+              animationName: 'particle-blink',
+              animationDuration: p.dur,
+              animationDelay: p.delay,
+              animationTimingFunction: 'ease-in-out',
+              animationIterationCount: 'infinite',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Diagonal sweep shimmer */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-blue-500/5 [animation:shimmer-sweep_12s_ease-in-out_infinite]" />
 
       <div className="relative mx-auto max-w-6xl px-6 py-28 md:py-36 lg:py-44">
         <div className="flex flex-col items-center text-center gap-8">
@@ -247,16 +295,11 @@ export function LandingHowItWorks() {
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-border/50 py-12">
-      <div className="mx-auto max-w-6xl px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-7 h-7 rounded-md bg-foreground">
-            <MessageSquare className="w-3.5 h-3.5 text-background" />
-          </div>
-          <span className="text-sm font-bold text-foreground">UniBot</span>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Built with Next.js, Supabase & Google Gemini. All features free, forever.
+    <footer className="border-t border-border/50 py-8">
+      <div className="mx-auto max-w-6xl px-6 flex items-center justify-center">
+        <p className="text-sm text-muted-foreground text-center">
+          &copy; {new Date().getFullYear()} All rights reserved by{' '}
+          <span className="font-semibold text-foreground">Team UniBot</span>
         </p>
       </div>
     </footer>

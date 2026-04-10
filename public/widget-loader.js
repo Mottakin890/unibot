@@ -1,9 +1,26 @@
 (function () {
-  var script = document.currentScript;
-  var chatbotId = script.getAttribute('data-chatbot-id');
+  // Read chatbotId from the URL query string: ?id=YOUR_CHATBOT_ID
+  // This approach is needed because document.currentScript is null
+  // when the script is loaded asynchronously (async attribute).
+  var scripts = document.querySelectorAll('script[src*="widget-loader.js"]');
+  var scriptSrc = '';
+  for (var i = 0; i < scripts.length; i++) {
+    if (scripts[i].src && scripts[i].src.indexOf('widget-loader.js') !== -1) {
+      scriptSrc = scripts[i].src;
+      break;
+    }
+  }
+
+  if (!scriptSrc) return;
+
+  var url = new URL(scriptSrc);
+  var chatbotId = url.searchParams.get('id');
+  var origin = url.origin;
+
   if (!chatbotId) return;
 
-  var origin = script.src.replace('/widget-loader.js', '');
+  // Avoid loading twice
+  if (document.getElementById('unibot-widget-container')) return;
 
   // Create container
   var container = document.createElement('div');

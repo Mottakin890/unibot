@@ -22,8 +22,10 @@ import {
   PanelLeft,
   ChevronDown,
   Settings,
+  Sparkles,
 } from 'lucide-react'
 import { useState } from 'react'
+import { ComingSoonModal } from '@/components/dashboard/coming-soon-modal'
 
 interface DashboardShellProps {
   user: {
@@ -44,6 +46,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [comingSoonOpen, setComingSoonOpen] = useState(false)
 
   const handleSignOut = async () => {
     const supabase = createClient()
@@ -134,8 +137,20 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
             </Link>
           </div>
 
-          {/* User dropdown */}
-          <div className="ml-auto">
+          {/* Coming Soon + User dropdown */}
+          <div className="ml-auto flex items-center gap-3">
+            {/* Coming Soon button */}
+            <button
+              id="coming-soon-btn"
+              onClick={() => setComingSoonOpen(true)}
+              className="group flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold border border-violet-500/30 bg-gradient-to-r from-violet-500/10 to-blue-500/10 text-violet-400 hover:from-violet-500/20 hover:to-blue-500/20 hover:border-violet-500/50 hover:text-violet-300 transition-all duration-200"
+              aria-label="See upcoming features"
+            >
+              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+              <span className="hidden sm:inline">What&apos;s Coming</span>
+              <span className="inline sm:hidden">v2</span>
+              <span className="hidden sm:flex items-center justify-center text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 leading-none">NEW</span>
+            </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2.5 h-10 px-3 rounded-lg hover:bg-muted">
@@ -183,6 +198,9 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
           {children}
         </main>
       </div>
+
+      {/* Coming Soon Modal */}
+      <ComingSoonModal open={comingSoonOpen} onClose={() => setComingSoonOpen(false)} />
     </div>
   )
 }
