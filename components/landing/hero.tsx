@@ -113,7 +113,7 @@ export function LandingHero() {
 
           {/* Subtitle */}
           <p className="animate-fade-in [animation-delay:200ms] max-w-xl text-lg text-muted-foreground leading-relaxed md:text-xl">
-            Train a chatbot on your documents, websites, and text. Deploy it anywhere in minutes. Powered by Google Gemini.
+            Train a chatbot on your documents, websites, and text. Deploy it anywhere in minutes.
           </p>
 
           {/* CTA */}
@@ -197,7 +197,7 @@ export function LandingFeatures() {
     {
       icon: Zap,
       title: 'Lightning Fast',
-      description: 'Powered by Gemini 2.5 Flash. Sub-second response times with streaming for instant feedback.',
+      description: 'Powered by state-of-the-art AI. Sub-second response times with streaming for instant feedback.',
     },
     {
       icon: Shield,
@@ -248,7 +248,7 @@ export function LandingHowItWorks() {
     {
       step: '01',
       title: 'Create a Chatbot',
-      description: 'Name it, set its personality and system prompt, pick a Gemini model.',
+      description: 'Name it, set its personality and system prompt, and pick an AI model.',
     },
     {
       step: '02',

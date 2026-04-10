@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: '%s | UniBot',
   },
   description:
-    'Create custom AI chatbots trained on your own data. Embed them anywhere. Powered by Google Gemini. Completely free.',
+    'Create custom AI chatbots trained on your own data. Embed them anywhere. Completely free.',
 }
 
 export const viewport: Viewport = {
