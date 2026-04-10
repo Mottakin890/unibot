@@ -73,7 +73,14 @@ export default function ConnectPage() {
             <Code className="w-4 h-4 text-foreground" />
             <h3 className="text-sm font-semibold text-foreground">Iframe Embed</h3>
           </div>
-          <p className="text-sm text-muted-foreground">Embed the chatbot directly on your page as an iframe.</p>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>Embed the chatbot directly on your page as an iframe.</p>
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>Copy the iframe code below.</li>
+              <li>Paste the code into any HTML block or widget area on your website.</li>
+              <li>You can adjust the <code className="bg-secondary px-1 rounded">width</code> and <code className="bg-secondary px-1 rounded">height</code> in the style attribute to fit your page.</li>
+            </ol>
+          </div>
           <div className="relative">
             <pre className="rounded-lg bg-secondary p-4 text-xs text-foreground font-mono overflow-x-auto whitespace-pre-wrap">
               {iframeCode}
@@ -96,9 +103,15 @@ export default function ConnectPage() {
             <Code className="w-4 h-4 text-foreground" />
             <h3 className="text-sm font-semibold text-foreground">Chat Bubble (Script Tag)</h3>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {"Add a floating chat bubble to your website. Paste this before your closing </body> tag."}
-          </p>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>Add a floating chat bubble to the corner of your website.</p>
+            <ol className="list-decimal pl-5 space-y-1">
+              <li>Copy the script code below.</li>
+              <li>Open your website's HTML editor or theme settings (e.g., WordPress header/footer settings or Shopify Theme Liquid).</li>
+              <li>Paste the script directly before the closing <code className="bg-secondary px-1 rounded">&lt;/body&gt;</code> tag.</li>
+              <li>Save and refresh your website. The UniBot bubble will load automatically.</li>
+            </ol>
+          </div>
           <div className="relative">
             <pre className="rounded-lg bg-secondary p-4 text-xs text-foreground font-mono overflow-x-auto whitespace-pre-wrap">
               {scriptCode}
