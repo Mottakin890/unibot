@@ -3,22 +3,12 @@ import {
   streamText,
   UIMessage,
 } from 'ai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createClient } from '@/lib/supabase/server'
 
-// ─── Ollama client ────────────────────────────────────────────────────────────
-// Reads OLLAMA_BASE_URL from env; falls back to localhost if not set.
-// On the VPS, Next.js and Ollama are co-located so 127.0.0.1 is correct.
-const OLLAMA_BASE_URL =
-  process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434/v1'
-
-const OLLAMA_DEFAULT_MODEL =
-  process.env.OLLAMA_DEFAULT_MODEL || 'llama3.2'
-
-const localOllama = createOpenAI({
-  baseURL: OLLAMA_BASE_URL,
-  apiKey: 'ollama', // Not needed for Ollama, but required by the SDK shape
-})
+const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY })
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 export const maxDuration = 60
 
@@ -57,67 +47,8 @@ function scoreRelevance(query: string, sourceContent: string): number {
   return hits / words.length
 }
 
-/**
- * Check whether Ollama is reachable. Returns true if healthy.
- * Uses /api/tags (lightweight endpoint).
- */
-async function checkOllamaHealth(): Promise<{ ok: boolean; error?: string }> {
-  // Strip the /v1 suffix to get the root Ollama API URL
-  const rootUrl = OLLAMA_BASE_URL.replace(/\/v1\/?$/, '')
-  try {
-    const res = await fetch(`${rootUrl}/api/tags`, {
-      signal: AbortSignal.timeout(4000),
-    })
-    if (res.ok) return { ok: true }
-    return { ok: false, error: `Ollama responded with HTTP ${res.status}` }
-  } catch (err: any) {
-    return {
-      ok: false,
-      error: err?.message ?? 'Connection refused — is Ollama running?',
-    }
-  }
-}
-
-// ─── POST /api/chat ───────────────────────────────────────────────────────────
-
-export async function POST(req: Request) {
-  const {
-    messages,
-    chatbotId,
-    conversationId,
-  }: {
-    messages: UIMessage[]
-    chatbotId: string
-    conversationId?: string
-  } = await req.json()
-
-  if (!chatbotId) {
-    console.error('[/api/chat] Missing chatbotId in request payload')
-    return new Response('Missing chatbotId', { status: 400 })
-  }
-
-  if (!messages || messages.length === 0) {
-    return new Response('No messages provided', { status: 400 })
-  }
-
-  // ── 1. Ollama health check ────────────────────────────────────────────────
-  const health = await checkOllamaHealth()
-  if (!health.ok) {
-    console.error(`[/api/chat] Ollama is unreachable at ${OLLAMA_BASE_URL}: ${health.error}`)
-    return new Response(
-      JSON.stringify({
-        error: 'AI engine is temporarily unavailable. Please try again in a moment.',
-        detail: health.error,
-      }),
-      {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )
-  }
-
   console.log(
-    `[/api/chat] Processing for chatbotId=${chatbotId}, messages=${messages.length}, ollama=${OLLAMA_BASE_URL}`,
+    `[/api/chat] Processing for chatbotId=${chatbotId}, messages=${messages.length}`
   )
 
   // ── 2. Fetch chatbot config from Supabase ─────────────────────────────────
@@ -135,12 +66,14 @@ export async function POST(req: Request) {
   }
 
   // ── 3. Resolve model ──────────────────────────────────────────────────────
-  // Use the model stored in the DB if it looks like an Ollama model name,
-  // otherwise fall back to the env default (llama3.2).
-  const modelId =
-    chatbot.model && chatbot.model !== 'gemini-2.5-flash'
-      ? chatbot.model
-      : OLLAMA_DEFAULT_MODEL
+  const requestedModel = chatbot.model || 'gemini-2.5-flash'
+  let modelEngine
+
+  if (requestedModel.startsWith('gpt')) {
+    modelEngine = openai(requestedModel)
+  } else {
+    modelEngine = google(requestedModel)
+  }
 
   // ── 4. Fetch data sources & build relevance-filtered context ──────────────
   const { data: sources } = await supabase
@@ -191,7 +124,7 @@ export async function POST(req: Request) {
   const systemPrompt = basePrompt + refinementPrompt + contextBlock
 
   console.log(
-    `[/api/chat] model=${modelId}, sources=${scoredSources.length}, contextChars=${contextBlock.length}`,
+    `[/api/chat] model=${requestedModel}, sources=${scoredSources.length}, contextChars=${contextBlock.length}`,
   )
 
   // ── 5. Convert messages & stream ──────────────────────────────────────────
@@ -204,7 +137,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: localOllama(modelId),
+    model: modelEngine,
     system: systemPrompt,
     messages: modelMessages,
     temperature: chatbot.temperature ?? 0.7,
