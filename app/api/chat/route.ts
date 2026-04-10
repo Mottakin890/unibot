@@ -80,7 +80,14 @@ export async function POST(req: Request) {
   }
 
   // ── 3. Resolve model ──────────────────────────────────────────────────────
-  const requestedModel = chatbot.model || 'gemini-2.0-flash'
+  let requestedModel = chatbot.model || 'gemini-2.0-flash'
+  
+  // The Gemini 2.5 preview model is overloaded and throwing 503s. 
+  // Map it to the stable 2.0 model automatically.
+  if (requestedModel === 'gemini-2.5-flash') {
+    requestedModel = 'gemini-2.0-flash'
+  }
+
   let modelEngine
 
   if (requestedModel.startsWith('gpt')) {
@@ -150,33 +157,14 @@ export async function POST(req: Request) {
     return new Response('Invalid message format', { status: 400 })
   }
 
-  // Fallback chain: if primary Gemini model fails with 503, retry with gemini-1.5-flash
-  const fallbackModel = requestedModel.startsWith('gpt')
-    ? openai('gpt-4o-mini')
-    : google('gemini-1.5-flash')
-
-  const streamParams = {
+  const result = streamText({
+    model: modelEngine,
     system: systemPrompt,
     messages: modelMessages,
     temperature: chatbot.temperature ?? 0.7,
     maxOutputTokens: 4096,
     abortSignal: req.signal,
-  }
-
-  let result
-  try {
-    result = streamText({ model: modelEngine, ...streamParams })
-    // Probe for errors early by awaiting a small portion
-    await result.textStream.getReader().read().then(({ done }) => done)
-  } catch (firstErr: any) {
-    const is503 = firstErr?.statusCode === 503 || firstErr?.message?.includes('503') || firstErr?.message?.includes('high demand')
-    if (is503 && !requestedModel.startsWith('gpt')) {
-      console.warn(`[/api/chat] ${requestedModel} returned 503, falling back to gemini-1.5-flash`)
-      result = streamText({ model: fallbackModel, ...streamParams })
-    } else {
-      throw firstErr
-    }
-  }
+  })
 
   // ── 6. Persist conversation to Supabase after stream finishes ─────────────
   return result.toUIMessageStreamResponse({
