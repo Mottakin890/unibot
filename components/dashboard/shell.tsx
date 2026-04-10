@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { ComingSoonModal } from '@/components/dashboard/coming-soon-modal'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 interface DashboardShellProps {
   user: {
@@ -151,6 +152,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
               <span className="inline sm:hidden">v2</span>
               <span className="hidden sm:flex items-center justify-center text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 leading-none">NEW</span>
             </button>
+            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2.5 h-10 px-3 rounded-lg hover:bg-muted">
