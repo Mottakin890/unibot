@@ -185,8 +185,10 @@ export async function POST(req: Request) {
     }
   }
 
-  const systemPrompt =
-    (chatbot.system_prompt || 'You are a helpful assistant.') + contextBlock
+  const basePrompt = chatbot.system_prompt || 'You are a helpful assistant.'
+  const refinementPrompt =
+    '\n\nCRITICAL INSTRUCTION: Your answers MUST be short, concise, and perfectly refined. Do not use filler words. Get straight to the point. Output the response directly to the user.'
+  const systemPrompt = basePrompt + refinementPrompt + contextBlock
 
   console.log(
     `[/api/chat] model=${modelId}, sources=${scoredSources.length}, contextChars=${contextBlock.length}`,
