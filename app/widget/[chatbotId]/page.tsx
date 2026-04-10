@@ -17,7 +17,7 @@ export default async function WidgetPage({
 
   const { data: chatbot, error } = await supabase
     .from('chatbots')
-    .select('id, name, welcome_message')
+    .select('id, name, welcome_message, avatar_url')
     .eq('id', chatbotId)
     .single()
 
@@ -35,6 +35,7 @@ export default async function WidgetPage({
       chatbotId={chatbot.id}
       chatbotName={chatbot.name}
       welcomeMessage={chatbot.welcome_message}
+      avatarUrl={chatbot.avatar_url}
     />
   )
 }

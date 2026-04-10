@@ -41,7 +41,7 @@ export async function PATCH(
   }
 
   const body = await req.json()
-  const { name, model, system_prompt, temperature } = body
+  const { name, model, system_prompt, temperature, avatar_url } = body
 
   const { data, error } = await supabase
     .from('chatbots')
@@ -50,6 +50,7 @@ export async function PATCH(
       ...(model !== undefined && { model }),
       ...(system_prompt !== undefined && { system_prompt }),
       ...(temperature !== undefined && { temperature }),
+      ...(avatar_url !== undefined && { avatar_url }),
       updated_at: new Date().toISOString(),
     })
     .eq('id', chatbotId)

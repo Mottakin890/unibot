@@ -49,6 +49,8 @@ export default function SettingsPage() {
   const [systemPrompt, setSystemPrompt] = useState('')
   const [temperature, setTemperature] = useState(0.7)
   const [welcomeMessage, setWelcomeMessage] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   useEffect(() => {
     if (chatbot) {
@@ -58,8 +60,49 @@ export default function SettingsPage() {
       setSystemPrompt(chatbot.system_prompt ?? '')
       setTemperature(chatbot.temperature ?? 0.7)
       setWelcomeMessage(chatbot.welcome_message ?? '')
+      setAvatarUrl(chatbot.avatar_url ?? null)
     }
   }, [chatbot])
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingAvatar(true)
+    setError(null)
+
+    try {
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${chatbotId}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('chatbot-avatars')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chatbot-avatars')
+        .getPublicUrl(filePath)
+
+      // Update chatbot record immediately
+      const { error: updateError } = await supabase
+        .from('chatbots')
+        .update({ avatar_url: publicUrl })
+        .eq('id', chatbotId)
+
+      if (updateError) throw updateError
+
+      setAvatarUrl(publicUrl)
+      mutate()
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -118,6 +161,60 @@ export default function SettingsPage() {
     <div className="p-6 md:p-8 max-w-2xl">
       <form onSubmit={handleSave} className="flex flex-col gap-6">
         <h2 className="text-xl font-semibold text-foreground">General Settings</h2>
+
+        <div className="flex flex-col gap-4 p-4 border border-border rounded-xl bg-muted/20">
+          <Label className="text-sm font-medium text-foreground">Chatbot Picture</Label>
+          <div className="flex items-center gap-4">
+            <div className="relative w-16 h-16 rounded-xl bg-secondary overflow-hidden flex items-center justify-center border border-border">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <MessageSquare className="w-8 h-8 text-muted-foreground" />
+              )}
+              {uploadingAvatar && (
+                <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                disabled={uploadingAvatar}
+                className="hidden"
+                id="avatar-upload"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => document.getElementById('avatar-upload')?.click()}
+                disabled={uploadingAvatar}
+              >
+                {avatarUrl ? 'Change Picture' : 'Upload Picture'}
+              </Button>
+              {avatarUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={async () => {
+                    const supabase = createClient()
+                    await supabase.from('chatbots').update({ avatar_url: null }).eq('id', chatbotId)
+                    setAvatarUrl(null)
+                    mutate()
+                  }}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Recommended: Square image, at least 128x128px.</p>
+        </div>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="name" className="text-sm font-medium text-foreground">Name</Label>
