@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { cn } from '@/lib/utils'
-import { MessageSquare, Send, RotateCcw, User, AlertCircle } from 'lucide-react'
+import { MessageSquare, Send, RotateCcw, User, AlertCircle, Cpu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ChatMarkdown } from '@/components/chat/chat-markdown'
 
@@ -91,17 +91,21 @@ export function ChatInterface({ chatbotId, isPlayground = false, welcomeMessage 
           {/* Empty state */}
           {messages.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center py-16 gap-5 text-center">
-              <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-foreground">
-                <MessageSquare className="w-7 h-7 text-background" />
+              <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20">
+                <Cpu className="w-7 h-7 text-primary" />
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2 items-center">
                 <h3 className="text-lg font-semibold text-foreground">
-                  {isPlayground ? 'Test your chatbot' : 'How can I help?'}
+                  {isPlayground ? 'Test your Private Bot' : 'How can I help?'}
                 </h3>
-                <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-xs font-medium text-green-600 dark:text-green-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  100% Local VPS Intelligence (Llama 3.2)
+                </div>
+                <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mt-2">
                   {welcomeMessage || (isPlayground
-                    ? 'Send a message to see how your chatbot responds based on its training data.'
-                    : 'Ask me anything and I\'ll do my best to help you.')}
+                    ? 'Send a message to see how your chatbot responds directly from the edge node.'
+                    : 'Ask me anything. Your data never leaves this server.')}
                 </p>
               </div>
             </div>
