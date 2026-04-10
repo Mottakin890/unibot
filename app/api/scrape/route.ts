@@ -5,8 +5,6 @@ import * as cheerio from 'cheerio'
 // Allow up to 60s for batch scraping multiple pages
 export const maxDuration = 60
 
-// Bypass SSL verification for web scraping targets
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 export async function POST(req: Request) {
   try {

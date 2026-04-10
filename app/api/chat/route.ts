@@ -84,7 +84,7 @@ export async function POST(req: Request) {
   
   // The Gemini 2.5 preview model is overloaded and throwing 503s. 
   // Map it to the stable 2.0 model automatically.
-  if (requestedModel === 'gemini-2.5-flash') {
+  if (requestedModel === 'gemini-2.5-flash' || requestedModel === 'gemini-1.5-flash') {
     requestedModel = 'gemini-2.0-flash'
   }
 
