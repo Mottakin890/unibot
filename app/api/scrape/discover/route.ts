@@ -4,6 +4,9 @@ import * as cheerio from 'cheerio'
 // Allow up to 60s for deep crawling
 export const maxDuration = 60
 
+// Bypass SSL verification for web scraping targets
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
 /** Parse a sitemap XML and return all <loc> URLs */
 async function parseSitemap(sitemapUrl: string, domain: string): Promise<string[]> {
   try {
